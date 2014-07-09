@@ -1,7 +1,0 @@
-environment=dev
-table=tt
-appid=woc_ledou_2
-counter=login
-start=2014-07-02 11:00:00
-end=2014-07-03 13:00:00
-outputfile=/User/yixuan/Desktop/result
