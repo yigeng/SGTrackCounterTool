@@ -96,6 +96,7 @@ public class CounterExportTool {
 		try {
 			if (conn!=null && !conn.isClosed())
 				conn.close();
+			System.out.println("Mission accomplished, bye-bye!");
 		} catch (SQLException e) {
 
 		}
