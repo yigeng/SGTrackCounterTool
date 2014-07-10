@@ -33,9 +33,9 @@ public class CounterExportTool {
 
 	public static void main(String args[]) {
 		init();
-//		createPhoenixConn();
-//		execute();
-//		cleanup();
+		createPhoenixConn();
+		execute();
+		cleanup();
 	}
 	
 	private static void execute()
@@ -47,46 +47,62 @@ public class CounterExportTool {
 			String sql = "select count(*) from \""+table +"\" where \"info\".\"appid\" = '"+appid+ "' and \"info\".\"counterid\" = '"+ counterid+ "' and \"info\".\"time\"> '"+ startStr+"' and \"info\".\"time\"< '"+ endStr+ "'";
 			System.out.println();
 			System.out.println("Executing sql query: "+ sql); 
-			System.out.println("This may take a while to finish");
+			System.out.println("This may take a while to finish, please wait");
 			System.out.println("...");
 			try {
 					Statement statement = conn.createStatement();
 					ResultSet result = statement.executeQuery(sql);
 					result.next();
 					int size = result.getInt(1);
-					System.out.println ("---------------------------");
+					System.out.println("************************************");
+					System.out.println("************************************");
 					System.out.println (size + " records are found");
+					System.out.println("************************************");
+					System.out.println("************************************");
 				} catch (SQLException e) {
 					e.printStackTrace();
 				}	
 		}
 		else
 		{
-			String sql = "select count(*) from \""+table +"\" where \"info\".\"appid\" = '"+appid+ "' and \"info\".\"counterid\" = '"+ counterid+ "' and \"info\".\"time\"> '"+ startStr+"' and \"info\".\"time\"< '"+ endStr+ "'";
+			String sql = "select * from \""+table +"\" where \"info\".\"appid\" = '"+appid+ "' and \"info\".\"counterid\" = '"+ counterid+ "' and \"info\".\"time\"> '"+ startStr+"' and \"info\".\"time\"< '"+ endStr+ "'";
 			System.out.println();
 			System.out.println("Executing sql query: "+ sql); 
-			System.out.println("This may take a while to finish");
+			System.out.println("This may take a while to finish, please wait");
 			System.out.println("...");
-
+			BufferedWriter out = null;
 			try {
-				BufferedWriter out = new BufferedWriter(new FileWriter(outputFile));
+				out= new BufferedWriter(new FileWriter(outputFile));
 				Statement statement = conn.createStatement();
 				ResultSet result = statement.executeQuery(sql);
 				int count = 0;
+				int size = result.getMetaData().getColumnCount();
 				while (result.next())
 				{
 					count ++;
-					int size = result.getMetaData().getColumnCount();
 					String str = "";
-					for (int i=0;i<size;i++)
+					for (int i=2;i<=size;i++)
 						str+= result.getString(i)+" ";
 					out.write(str+"\n");
 				}
+				System.out.println("************************************");
+				System.out.println("************************************");
 				System.out.println(count + " records are found");
 				System.out.println("All records have been written into "+ outputFile);
+				System.out.println("************************************");
+				System.out.println("************************************");
 			} catch (Exception e) {
 				e.printStackTrace();
-			}	
+			} finally
+			{
+				try
+				{
+					out.close();
+				}catch (IOException e)
+				{
+					
+				}
+			}
 		
 		}
 	}
@@ -97,7 +113,7 @@ public class CounterExportTool {
 			if (conn!=null && !conn.isClosed())
 				conn.close();
 			System.out.println("Mission accomplished, bye-bye!");
-		} catch (SQLException e) {
+		} catch (Exception e) {
 
 		}
 	}
