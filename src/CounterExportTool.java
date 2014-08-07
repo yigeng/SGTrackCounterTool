@@ -25,6 +25,9 @@ public class CounterExportTool {
 	private static String table;
 	private static String appid;
 	private static String counterid;
+	private static String channelid;
+	private static String publisherid;
+	private static String platformid;
 	private static Date startTime;
 	private static Date endTime;
 	private static String outputFile;
@@ -66,6 +69,12 @@ public class CounterExportTool {
 		else
 		{
 			String sql = "select * from \""+table +"\" where \"info\".\"appid\" = '"+appid+ "' and \"info\".\"counterid\" = '"+ counterid+ "' and \"info\".\"time\"> '"+ startStr+"' and \"info\".\"time\"< '"+ endStr+ "'";
+			if (publisherid != null)
+				sql += " and \"info\".\"publisherid\" = '"+publisherid+"'";
+			if (channelid != null)
+				sql += " and \"info\".\"channelid\" = '"+channelid+"'";
+			if (platformid != null)
+				sql += " and \"info\".\"platformid\" = '"+platformid+"'";
 			System.out.println();
 			System.out.println("Executing sql query: "+ sql); 
 			System.out.println("This may take a while to finish, please wait");
@@ -144,6 +153,9 @@ public class CounterExportTool {
 			table = loadProperty(props, "table");
 			appid = loadProperty(props, "appid");
 			counterid = loadProperty(props,"counterid");
+			publisherid = loadOptionalProperty(props, "publisherid");
+			channelid = loadOptionalProperty(props, "channelid");
+			platformid = loadOptionalProperty(props, "channelid");		
 			String start = loadProperty(props, "start");
 			startTime = convertToBeijingDate(new Date(start));
 			String end =  loadProperty(props, "end");
@@ -167,6 +179,9 @@ public class CounterExportTool {
 		System.out.println("Searching in hbase table "+table);
 		System.out.println("Looking for appid:"+appid+", counterid:"+counterid);
 		System.out.println("Time period is from "+startTime+" to "+endTime);
+		System.out.println();
+		System.out.println("Connecting to hbase, please wait for about 10 seconds");
+		System.out.println("Please ignore the following \"Unable to load...\" error message");
 		} catch (FileNotFoundException e) {
 			String message = "FAILED: Cannot find property file";
 			exit(message);
@@ -186,6 +201,11 @@ public class CounterExportTool {
 		return prop;
 	}
 
+	private static String loadOptionalProperty(Properties props, String propName){
+		String prop = props.getProperty(propName);
+		return prop;
+	}
+	
 	private static void exit(String message) {
 		System.out.println(message);
 		System.exit(1);
