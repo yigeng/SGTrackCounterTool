@@ -3,5 +3,8 @@
 	<classpathentry kind="src" path="src"/>
 	<classpathentry kind="lib" path="lib/phoenix-3.0.0-incubating-client.jar"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
+	<classpathentry kind="lib" path="lib/httpclient-4.3.6.jar"/>
+	<classpathentry kind="lib" path="lib/json-simple-1.1.1.jar"/>
+	<classpathentry kind="lib" path="lib/httpcore-4.4-beta1.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

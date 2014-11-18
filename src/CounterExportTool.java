@@ -15,8 +15,22 @@ import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.Iterator;
 import java.util.Properties;
 import java.util.TimeZone;
+
+import org.apache.http.HttpEntity;
+import org.apache.http.HttpResponse;
+import org.apache.http.client.ClientProtocolException;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.HttpClients;
+import org.apache.http.util.EntityUtils;
+import org.json.simple.JSONArray;
+import org.json.simple.JSONObject;
+import org.json.simple.parser.JSONParser;
+
+
 
 public class CounterExportTool {
 	private static String phoenix_driver = "org.apache.phoenix.jdbc.PhoenixDriver";
@@ -34,17 +48,48 @@ public class CounterExportTool {
 	private static boolean getCountOnly;
 	private static Connection conn;
 
-	public static void main(String args[]) {
+	public static void main(String args[]) throws ClientProtocolException, IOException {
 		init();
+//		query();
 		createPhoenixConn();
 		execute();
 		cleanup();
+	}
+	
+	private static void query() throws ClientProtocolException, IOException
+	{
+		String startStr = getUnixTimeStringFromDate(startTime);
+		String endStr = getUnixTimeStringFromDate(endTime);
+		String url = "http://115.28.128.107:8080/sgpromo_ssh/searchitems?tablename="+table+"&appid="+appid+"&counterid="+counterid+"&starttime="+startStr+"&endtime="+endStr;
+		  CloseableHttpClient httpclient = HttpClients.createDefault();
+          HttpGet httpget = new HttpGet(url);
+          HttpResponse response = httpclient.execute(httpget); 
+          HttpEntity entity = response.getEntity();
+          String html = EntityUtils.toString(entity);  
+  		  JSONParser parser = new JSONParser();
+  		  try {
+			JSONObject record = (JSONObject)parser.parse(html);
+			JSONArray payload = (JSONArray)record.get("data");
+			BufferedWriter out= new BufferedWriter(new FileWriter(outputFile));
+			Iterator<?> keys = payload.iterator();
+	        while( keys.hasNext() ){
+	            JSONObject item = (JSONObject)keys.next();
+	            //System.out.println(item);
+				out.write(item+"\n");
+	        }
+	        out.close();
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+          httpclient.close();
 	}
 	
 	private static void execute()
 	{
 		String startStr = getUnixTimeStringFromDate(startTime);
 		String endStr = getUnixTimeStringFromDate(endTime);
+		
 		if (getCountOnly)
 		{
 			String sql = "select count(*) from \""+table +"\" where \"info\".\"appid\" = '"+appid+ "' and \"info\".\"counterid\" = '"+ counterid+ "' and \"info\".\"time\"> '"+ startStr+"' and \"info\".\"time\"< '"+ endStr+ "'";
@@ -68,7 +113,7 @@ public class CounterExportTool {
 		}
 		else
 		{
-			String sql = "select * from \""+table +"\" where \"info\".\"appid\" = '"+appid+ "' and \"info\".\"counterid\" = '"+ counterid+ "' and \"info\".\"time\"> '"+ startStr+"' and \"info\".\"time\"< '"+ endStr+ "'";
+			String sql = "select  \"info\".\"userid\",  \"info\".\"metadata\" from \""+table +"\" where \"info\".\"appid\" = '"+appid+ "' and \"info\".\"counterid\" = '"+ counterid+ "' and \"info\".\"time\"> '"+ startStr+"' and \"info\".\"time\"< '"+ endStr+ "'";
 			if (publisherid != null)
 				sql += " and \"info\".\"publisherid\" = '"+publisherid+"'";
 			if (channelid != null)
@@ -86,13 +131,18 @@ public class CounterExportTool {
 				ResultSet result = statement.executeQuery(sql);
 				int count = 0;
 				int size = result.getMetaData().getColumnCount();
+		  		  JSONParser parser = new JSONParser();
 				while (result.next())
 				{
 					count ++;
 					String str = "";
-					for (int i=2;i<=size;i++)
-						str+= result.getString(i)+" ";
-					out.write(str+"\n");
+					String userid = result.getString(1);
+					String metadata = result.getString(2);
+					JSONObject record = (JSONObject)parser.parse(metadata);
+					String serverid = (String)record.get("serverid");
+					String step = (String)record.get("step");
+
+					out.write(serverid+","+userid+","+step+"\n");
 				}
 				System.out.println("************************************");
 				System.out.println("************************************");
@@ -126,7 +176,7 @@ public class CounterExportTool {
 
 		}
 	}
-	
+
 	private static void createPhoenixConn()
 	{
 		try {
@@ -134,9 +184,12 @@ public class CounterExportTool {
 		} catch (ClassNotFoundException e) {
 			exit("FAILED: Cannot load phoenix driver");
 		}
-		String jdbcString = "jdbc:phoenix:"+env;
+		//String jdbcString = "jdbc:phoenix:"+env;
+		String jdbcString = "jdbc:phoenix:master-dev";
 		try {
+			System.out.println("get connection before "+ jdbcString);
 			conn = DriverManager.getConnection(jdbcString);
+			System.out.println("get connection after");
 		} catch (SQLException e) {
 			exit("FAILED: Cannot create connection to "+jdbcString);
 		}
@@ -180,8 +233,6 @@ public class CounterExportTool {
 		System.out.println("Looking for appid:"+appid+", counterid:"+counterid);
 		System.out.println("Time period is from "+startTime+" to "+endTime);
 		System.out.println();
-		System.out.println("Connecting to hbase, please wait for about 10 seconds");
-		System.out.println("Please ignore the following \"Unable to load...\" error message");
 		} catch (FileNotFoundException e) {
 			String message = "FAILED: Cannot find property file";
 			exit(message);
