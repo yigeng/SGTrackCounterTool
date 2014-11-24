@@ -47,21 +47,30 @@ public class CounterExportTool {
 	private static String outputFile;
 	private static boolean getCountOnly;
 	private static Connection conn;
+	private static String exclude_publisher;
 
 	public static void main(String args[]) throws ClientProtocolException, IOException {
 		init();
-//		query();
-		createPhoenixConn();
-		execute();
-		cleanup();
+		query();
+	//	createPhoenixConn();
+	//	execute();
+	//	cleanup();
 	}
 	
 	private static void query() throws ClientProtocolException, IOException
 	{
 		String startStr = getUnixTimeStringFromDate(startTime);
 		String endStr = getUnixTimeStringFromDate(endTime);
-		String url = "http://115.28.128.107:8080/sgpromo_ssh/searchitems?tablename="+table+"&appid="+appid+"&counterid="+counterid+"&starttime="+startStr+"&endtime="+endStr;
-		  CloseableHttpClient httpclient = HttpClients.createDefault();
+		
+		if (exclude_publisher.equalsIgnoreCase("true"))
+			exclude_publisher = "1";
+		else
+			exclude_publisher = "0";
+		
+		String url = "http://115.28.128.107:8080/sgpromo_ssh/searchbypublisher?tablename="+table+"&appid="+appid+"&counterid="+counterid+"&publisherid="+publisherid+"&starttime="+startStr+"&endtime="+endStr+"&exclude="+exclude_publisher;
+		System.out.println("Calling "+ url);
+		System.out.println("Fetching data, please wait...");
+		CloseableHttpClient httpclient = HttpClients.createDefault();
           HttpGet httpget = new HttpGet(url);
           HttpResponse response = httpclient.execute(httpget); 
           HttpEntity entity = response.getEntity();
@@ -74,10 +83,27 @@ public class CounterExportTool {
 			Iterator<?> keys = payload.iterator();
 	        while( keys.hasNext() ){
 	            JSONObject item = (JSONObject)keys.next();
-	            //System.out.println(item);
-				out.write(item+"\n");
+	            String metadata_str = (String)item.get("metadata");
+	            JSONObject metadata = (JSONObject)parser.parse(metadata_str);
+	            String userid = (String)item.get("userid");
+	            String counterid = (String) item.get("counterid");
+	            String timeStamp= (String)item.get("time");
+	            Long timestamp = Long.parseLong(timeStamp);
+	            TimeZone.setDefault(TimeZone.getTimeZone("GMT+8"));
+	            java.util.Date time=new java.util.Date(timestamp*1000);
+	            String line = counterid+","+userid+","+ time +",";
+	            Iterator<?> parts = metadata.keySet().iterator();
+	            while (parts.hasNext())
+	            {
+	            	String part = (String)parts.next();
+	            	line += (String)metadata.get(part)+",";
+	            }
+	            
+	            System.out.println(line);
+				out.write(line+"\n");
 	        }
 	        out.close();
+	        System.out.println("=================== Done! ===================");
 		} catch (Exception e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -210,10 +236,12 @@ public class CounterExportTool {
 			channelid = loadOptionalProperty(props, "channelid");
 			platformid = loadOptionalProperty(props, "channelid");		
 			String start = loadProperty(props, "start");
-			startTime = convertToBeijingDate(new Date(start));
+            TimeZone.setDefault(TimeZone.getTimeZone("GMT+8"));
+			startTime = new Date(start);
 			String end =  loadProperty(props, "end");
-			endTime = convertToBeijingDate(new Date(end));
+			endTime = new Date(end);
 			outputFile = loadProperty(props, "outputfile");
+			exclude_publisher = loadProperty(props,"exclude_publisher");
 			String getCount = props.getProperty("getCountOnly", "false");
 			if (getCount.equalsIgnoreCase("true"))
 				getCountOnly =true;
@@ -228,9 +256,8 @@ public class CounterExportTool {
 			}
 		System.out.println("Finished loading property file");
 		System.out.println();
-		System.out.println("Connecting to zoopkeeper at "+env);
-		System.out.println("Searching in hbase table "+table);
 		System.out.println("Looking for appid:"+appid+", counterid:"+counterid);
+		System.out.println("Exclude publisher id is "+ exclude_publisher +", publisher id is "+publisherid);
 		System.out.println("Time period is from "+startTime+" to "+endTime);
 		System.out.println();
 		} catch (FileNotFoundException e) {
