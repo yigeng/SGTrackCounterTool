@@ -88,10 +88,10 @@ public class CounterExportTool {
 	            String userid = (String)item.get("userid");
 	            String counterid = (String) item.get("counterid");
 	            String timeStamp= (String)item.get("time");
-	            Long timestamp = Long.parseLong(timeStamp);
-	            TimeZone.setDefault(TimeZone.getTimeZone("GMT+8"));
-	            java.util.Date time=new java.util.Date(timestamp*1000);
-	            String line = counterid+","+userid+","+ time +",";
+//	            Long timestamp = Long.parseLong(timeStamp);
+//	            TimeZone.setDefault(TimeZone.getTimeZone("GMT+8"));
+//	            java.util.Date time=new java.util.Date(timestamp*1000);
+	            String line = counterid+","+userid+","+ timeStamp +",";
 	            Iterator<?> parts = metadata.keySet().iterator();
 	            while (parts.hasNext())
 	            {
