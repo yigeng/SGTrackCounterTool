@@ -48,6 +48,7 @@ public class CounterExportTool {
 	private static boolean getCountOnly;
 	private static Connection conn;
 	private static String exclude_publisher;
+	private static String all_counters;
 
 	public static void main(String args[]) throws ClientProtocolException, IOException {
 		init();
@@ -68,6 +69,10 @@ public class CounterExportTool {
 			exclude_publisher = "0";
 		
 		String url = "http://115.28.128.107:8080/sgpromo_ssh/searchbypublisher?tablename="+table+"&appid="+appid+"&counterid="+counterid+"&publisherid="+publisherid+"&starttime="+startStr+"&endtime="+endStr+"&exclude="+exclude_publisher;
+		
+		if (all_counters!=null && all_counters.equalsIgnoreCase("true"))
+			url = "http://115.28.128.107:8080/sgpromo_ssh/searchallcountersbypublisher?tablename="+table+"&appid="+appid+"&publisherid="+publisherid+"&starttime="+startStr+"&endtime="+endStr+"&exclude="+exclude_publisher;
+		
 		System.out.println("Calling "+ url);
 		System.out.println("Fetching data, please wait...");
 		CloseableHttpClient httpclient = HttpClients.createDefault();
@@ -76,31 +81,39 @@ public class CounterExportTool {
           HttpEntity entity = response.getEntity();
           String html = EntityUtils.toString(entity);  
   		  JSONParser parser = new JSONParser();
+          SimpleDateFormat sdf = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss");
+          sdf.setTimeZone(TimeZone.getTimeZone("GMT+8"));
   		  try {
 			JSONObject record = (JSONObject)parser.parse(html);
 			JSONArray payload = (JSONArray)record.get("data");
 			BufferedWriter out= new BufferedWriter(new FileWriter(outputFile));
 			Iterator<?> keys = payload.iterator();
 	        while( keys.hasNext() ){
-	            JSONObject item = (JSONObject)keys.next();
-	            String metadata_str = (String)item.get("metadata");
-	            JSONObject metadata = (JSONObject)parser.parse(metadata_str);
-	            String userid = (String)item.get("userid");
-	            String counterid = (String) item.get("counterid");
-	            String timeStamp= (String)item.get("time");
-//	            Long timestamp = Long.parseLong(timeStamp);
-//	            TimeZone.setDefault(TimeZone.getTimeZone("GMT+8"));
-//	            java.util.Date time=new java.util.Date(timestamp*1000);
-	            String line = counterid+","+userid+","+ timeStamp +",";
-	            Iterator<?> parts = metadata.keySet().iterator();
-	            while (parts.hasNext())
-	            {
-	            	String part = (String)parts.next();
-	            	line += (String)metadata.get(part)+",";
-	            }
-	            
-	            System.out.println(line);
-				out.write(line+"\n");
+	        	try{
+		            JSONObject item = (JSONObject)keys.next();
+		            String metadata_str = (String)item.get("metadata");
+		            JSONObject metadata = (JSONObject)parser.parse(metadata_str);
+		            String userid = (String)item.get("userid");
+		            String counterid = (String) item.get("counterid");
+		            String timeStamp= (String)item.get("time");
+		            Long timestamp = Long.parseLong(timeStamp);
+		            TimeZone.setDefault(TimeZone.getTimeZone("GMT+8"));
+		            java.util.Date time=new java.util.Date(timestamp*1000);
+		            String stamp = sdf.format(time);
+		            String line = counterid+","+userid+","+ stamp +",";
+		            Iterator<?> parts = metadata.keySet().iterator();
+		            while (parts.hasNext())
+		            {
+		            	String part = (String)parts.next();
+		            	line += (String)metadata.get(part)+",";
+		            }
+		            
+		            System.out.println(line);
+					out.write(line+"\n");
+	        	}catch (Exception e)
+	        	{
+	        		System.out.println("Encountered mal-formed data "+ e.toString());
+	        	}
 	        }
 	        out.close();
 	        System.out.println("=================== Done! ===================");
@@ -228,7 +241,6 @@ public class CounterExportTool {
 			InputStream in = new BufferedInputStream(new FileInputStream(
 					property_file));
 			props.load(in);
-			env = loadProperty(props, "environment");
 			table = loadProperty(props, "table");
 			appid = loadProperty(props, "appid");
 			counterid = loadProperty(props,"counterid");
@@ -242,6 +254,7 @@ public class CounterExportTool {
 			endTime = new Date(end);
 			outputFile = loadProperty(props, "outputfile");
 			exclude_publisher = loadProperty(props,"exclude_publisher");
+			all_counters = loadProperty(props,"all_counters");
 			String getCount = props.getProperty("getCountOnly", "false");
 			if (getCount.equalsIgnoreCase("true"))
 				getCountOnly =true;
