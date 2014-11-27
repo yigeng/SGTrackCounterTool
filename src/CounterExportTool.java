@@ -108,7 +108,7 @@ public class CounterExportTool {
 		            	line += (String)metadata.get(part)+",";
 		            }
 		            
-		            System.out.println(line);
+		            //System.out.println(line);
 					out.write(line+"\n");
 	        	}catch (Exception e)
 	        	{
