@@ -84,6 +84,7 @@ public class CounterExportTool {
           SimpleDateFormat sdf = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss");
           sdf.setTimeZone(TimeZone.getTimeZone("GMT+8"));
   		  try {
+  			System.out.println("----- "+html);
 			JSONObject record = (JSONObject)parser.parse(html);
 			JSONArray payload = (JSONArray)record.get("data");
 			BufferedWriter out= new BufferedWriter(new FileWriter(outputFile));
@@ -253,11 +254,9 @@ public class CounterExportTool {
 			String end =  loadProperty(props, "end");
 			endTime = new Date(end);
 			outputFile = loadProperty(props, "outputfile");
-			exclude_publisher = loadProperty(props,"exclude_publisher");
-			all_counters = loadProperty(props,"all_counters");
-			String getCount = props.getProperty("getCountOnly", "false");
-			if (getCount.equalsIgnoreCase("true"))
-				getCountOnly =true;
+			exclude_publisher = loadOptionalProperty(props,"exclude_publisher");
+			all_counters = loadOptionalProperty(props,"all_counters");
+
 			File file = new File (outputFile);
 			if (!file.exists())
 			{
