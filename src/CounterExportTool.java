@@ -49,13 +49,11 @@ public class CounterExportTool {
 	private static Connection conn;
 	private static String exclude_publisher;
 	private static String all_counters;
+	private static String all_publishers;
 
 	public static void main(String args[]) throws ClientProtocolException, IOException {
 		init();
 		query();
-	//	createPhoenixConn();
-	//	execute();
-	//	cleanup();
 	}
 	
 	private static void query() throws ClientProtocolException, IOException
@@ -73,9 +71,12 @@ public class CounterExportTool {
 		if (all_counters!=null && all_counters.equalsIgnoreCase("true"))
 			url = "http://115.28.128.107:8080/sgpromo_ssh/searchallcountersbypublisher?tablename="+table+"&appid="+appid+"&publisherid="+publisherid+"&starttime="+startStr+"&endtime="+endStr+"&exclude="+exclude_publisher;
 		
-		System.out.println("Calling "+ url);
-		System.out.println("Fetching data, please wait...");
-		CloseableHttpClient httpclient = HttpClients.createDefault();
+		if (all_publishers!=null && all_publishers.equals("true"))
+			url = "http://115.28.128.107:8080/sgpromo_ssh/searchitems?tablename="+table+"&appid="+appid+"&starttime="+startStr+"&endtime="+endStr;
+		
+		  System.out.println("Calling "+ url);
+		  System.out.println("Fetching data, please wait...");
+		  CloseableHttpClient httpclient = HttpClients.createDefault();
           HttpGet httpget = new HttpGet(url);
           HttpResponse response = httpclient.execute(httpget); 
           HttpEntity entity = response.getEntity();
@@ -84,7 +85,7 @@ public class CounterExportTool {
           SimpleDateFormat sdf = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss");
           sdf.setTimeZone(TimeZone.getTimeZone("GMT+8"));
   		  try {
-  			System.out.println("----- "+html);
+  			
 			JSONObject record = (JSONObject)parser.parse(html);
 			JSONArray payload = (JSONArray)record.get("data");
 			BufferedWriter out= new BufferedWriter(new FileWriter(outputFile));
@@ -124,116 +125,6 @@ public class CounterExportTool {
 		}
           httpclient.close();
 	}
-	
-	private static void execute()
-	{
-		String startStr = getUnixTimeStringFromDate(startTime);
-		String endStr = getUnixTimeStringFromDate(endTime);
-		
-		if (getCountOnly)
-		{
-			String sql = "select count(*) from \""+table +"\" where \"info\".\"appid\" = '"+appid+ "' and \"info\".\"counterid\" = '"+ counterid+ "' and \"info\".\"time\"> '"+ startStr+"' and \"info\".\"time\"< '"+ endStr+ "'";
-			System.out.println();
-			System.out.println("Executing sql query: "+ sql); 
-			System.out.println("This may take a while to finish, please wait");
-			System.out.println("...");
-			try {
-					Statement statement = conn.createStatement();
-					ResultSet result = statement.executeQuery(sql);
-					result.next();
-					int size = result.getInt(1);
-					System.out.println("************************************");
-					System.out.println("************************************");
-					System.out.println (size + " records are found");
-					System.out.println("************************************");
-					System.out.println("************************************");
-				} catch (SQLException e) {
-					e.printStackTrace();
-				}	
-		}
-		else
-		{
-			String sql = "select  \"info\".\"userid\",  \"info\".\"metadata\" from \""+table +"\" where \"info\".\"appid\" = '"+appid+ "' and \"info\".\"counterid\" = '"+ counterid+ "' and \"info\".\"time\"> '"+ startStr+"' and \"info\".\"time\"< '"+ endStr+ "'";
-			if (publisherid != null)
-				sql += " and \"info\".\"publisherid\" = '"+publisherid+"'";
-			if (channelid != null)
-				sql += " and \"info\".\"channelid\" = '"+channelid+"'";
-			if (platformid != null)
-				sql += " and \"info\".\"platformid\" = '"+platformid+"'";
-			System.out.println();
-			System.out.println("Executing sql query: "+ sql); 
-			System.out.println("This may take a while to finish, please wait");
-			System.out.println("...");
-			BufferedWriter out = null;
-			try {
-				out= new BufferedWriter(new FileWriter(outputFile));
-				Statement statement = conn.createStatement();
-				ResultSet result = statement.executeQuery(sql);
-				int count = 0;
-				int size = result.getMetaData().getColumnCount();
-		  		  JSONParser parser = new JSONParser();
-				while (result.next())
-				{
-					count ++;
-					String str = "";
-					String userid = result.getString(1);
-					String metadata = result.getString(2);
-					JSONObject record = (JSONObject)parser.parse(metadata);
-					String serverid = (String)record.get("serverid");
-					String step = (String)record.get("step");
-
-					out.write(serverid+","+userid+","+step+"\n");
-				}
-				System.out.println("************************************");
-				System.out.println("************************************");
-				System.out.println(count + " records are found");
-				System.out.println("All records have been written into "+ outputFile);
-				System.out.println("************************************");
-				System.out.println("************************************");
-			} catch (Exception e) {
-				e.printStackTrace();
-			} finally
-			{
-				try
-				{
-					out.close();
-				}catch (IOException e)
-				{
-					
-				}
-			}
-		
-		}
-	}
-	
-	private static void cleanup()
-	{
-		try {
-			if (conn!=null && !conn.isClosed())
-				conn.close();
-			System.out.println("Mission accomplished, bye-bye!");
-		} catch (Exception e) {
-
-		}
-	}
-
-	private static void createPhoenixConn()
-	{
-		try {
-			Class.forName(phoenix_driver);
-		} catch (ClassNotFoundException e) {
-			exit("FAILED: Cannot load phoenix driver");
-		}
-		//String jdbcString = "jdbc:phoenix:"+env;
-		String jdbcString = "jdbc:phoenix:master-dev";
-		try {
-			System.out.println("get connection before "+ jdbcString);
-			conn = DriverManager.getConnection(jdbcString);
-			System.out.println("get connection after");
-		} catch (SQLException e) {
-			exit("FAILED: Cannot create connection to "+jdbcString);
-		}
-	}
 
 	private static void init() {
 		System.out.println("Reading property file ...");
@@ -256,6 +147,7 @@ public class CounterExportTool {
 			outputFile = loadProperty(props, "outputfile");
 			exclude_publisher = loadOptionalProperty(props,"exclude_publisher");
 			all_counters = loadOptionalProperty(props,"all_counters");
+			all_publishers = loadOptionalProperty(props,"all_publishers");
 
 			File file = new File (outputFile);
 			if (!file.exists())
