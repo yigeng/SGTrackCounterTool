@@ -33,21 +33,18 @@ import org.json.simple.parser.JSONParser;
 
 
 public class CounterExportTool {
-	private static String phoenix_driver = "org.apache.phoenix.jdbc.PhoenixDriver";
 	private static String property_file = "settings.properties";
-	private static String env;
 	private static String table;
 	private static String appid;
 	private static String counterid;
-	private static String channelid;
 	private static String publisherid;
+	private static String channelid;
 	private static String platformid;
 	private static Date startTime;
 	private static Date endTime;
 	private static String outputFile;
-	private static boolean getCountOnly;
-	private static Connection conn;
 	private static String exclude_publisher;
+	private static String server_url = "114.215.105.66";
 	private static String all_counters;
 	private static String all_publishers;
 
@@ -66,13 +63,13 @@ public class CounterExportTool {
 		else
 			exclude_publisher = "0";
 		
-		String url = "http://115.28.128.107:8080/sgpromo_ssh/searchbypublisher?tablename="+table+"&appid="+appid+"&counterid="+counterid+"&publisherid="+publisherid+"&starttime="+startStr+"&endtime="+endStr+"&exclude="+exclude_publisher;
+		String url = "http://"+server_url+":8080/sgpromo_ssh/searchbypublisher?tablename="+table+"&appid="+appid+"&counterid="+counterid+"&publisherid="+publisherid+"&starttime="+startStr+"&endtime="+endStr+"&exclude="+exclude_publisher;
 		
 		if (all_counters!=null && all_counters.equalsIgnoreCase("true"))
-			url = "http://115.28.128.107:8080/sgpromo_ssh/searchallcountersbypublisher?tablename="+table+"&appid="+appid+"&publisherid="+publisherid+"&starttime="+startStr+"&endtime="+endStr+"&exclude="+exclude_publisher;
+			url = "http://"+server_url+":8080/sgpromo_ssh/searchallcountersbypublisher?tablename="+table+"&appid="+appid+"&publisherid="+publisherid+"&starttime="+startStr+"&endtime="+endStr+"&exclude="+exclude_publisher;
 		
 		if (all_publishers!=null && all_publishers.equals("true"))
-			url = "http://115.28.128.107:8080/sgpromo_ssh/searchitems?tablename="+table+"&appid="+appid+"&starttime="+startStr+"&endtime="+endStr;
+			url = "http://"+server_url+":8080/sgpromo_ssh/searchitems?tablename="+table+"&appid="+appid+"&counterid="+counterid+"&starttime="+startStr+"&endtime="+endStr;
 		
 		  System.out.println("Calling "+ url);
 		  System.out.println("Fetching data, please wait...");
