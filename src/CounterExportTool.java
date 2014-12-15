@@ -6,14 +6,11 @@ import java.io.FileNotFoundException;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
 import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Date;
 import java.util.Iterator;
 import java.util.Properties;
@@ -35,6 +32,7 @@ import org.json.simple.parser.JSONParser;
 public class CounterExportTool {
 	private static String property_file = "settings.properties";
 	private static String table;
+	private static String query_url;
 	private static String appid;
 	private static String counterid;
 	private static String publisherid;
@@ -42,9 +40,10 @@ public class CounterExportTool {
 	private static String platformid;
 	private static Date startTime;
 	private static Date endTime;
-	private static String outputFile;
+	private static String outputDir;
 	private static String exclude_publisher;
 	private static String server_url = "114.215.105.66";
+	private static int line_per_file = -1;
 	private static String all_counters;
 	private static String all_publishers;
 
@@ -57,6 +56,9 @@ public class CounterExportTool {
 	{
 		String startStr = getUnixTimeStringFromDate(startTime);
 		String endStr = getUnixTimeStringFromDate(endTime);
+		
+		if (query_url!=null && query_url.length()>0)
+			server_url = query_url;
 		
 		if (exclude_publisher.equalsIgnoreCase("true"))
 			exclude_publisher = "1";
@@ -85,14 +87,20 @@ public class CounterExportTool {
   			
 			JSONObject record = (JSONObject)parser.parse(html);
 			JSONArray payload = (JSONArray)record.get("data");
-			BufferedWriter out= new BufferedWriter(new FileWriter(outputFile));
+			int file_id = 1;
+			int line_no = 0;
+			BufferedWriter out= new BufferedWriter(new FileWriter(outputDir+"/result"+""+file_id+".csv"));
 			Iterator<?> keys = payload.iterator();
+			JSONObject item = null;
 	        while( keys.hasNext() ){
+	        	line_no ++;
 	        	try{
-		            JSONObject item = (JSONObject)keys.next();
+		            item = (JSONObject)keys.next();
 		            String metadata_str = (String)item.get("metadata");
 		            JSONObject metadata = (JSONObject)parser.parse(metadata_str);
 		            String userid = (String)item.get("userid");
+		            if (userid==null || userid.equals("0"))
+		            	continue;
 		            String counterid = (String) item.get("counterid");
 		            String timeStamp= (String)item.get("time");
 		            Long timestamp = Long.parseLong(timeStamp);
@@ -101,17 +109,30 @@ public class CounterExportTool {
 		            String stamp = sdf.format(time);
 		            String line = counterid+","+userid+","+ stamp +",";
 		            Iterator<?> parts = metadata.keySet().iterator();
+		            // 确保metadata keys按顺序输出
+		            ArrayList<String> metadata_keys = new ArrayList<String>();	            
 		            while (parts.hasNext())
 		            {
 		            	String part = (String)parts.next();
-		            	line += (String)metadata.get(part)+",";
+		            	metadata_keys.add(part);
 		            }
+		            Collections.sort(metadata_keys);
+		            for (String key : metadata_keys)
+		            	line += key+","+(String)metadata.get(key)+",";
 		            
+		            if (line_per_file >0 && line_no>line_per_file)
+		            {
+		            	out.flush();
+		            	line_no = 0;
+		            	file_id++;
+		            	out =  new BufferedWriter(new FileWriter(outputDir+"/result"+""+file_id+".csv"));
+		            }
 		            //System.out.println(line);
 					out.write(line+"\n");
 	        	}catch (Exception e)
 	        	{
 	        		System.out.println("Encountered mal-formed data "+ e.toString());
+	        		System.out.println(item+"\n________________");
 	        	}
 	        }
 	        out.close();
@@ -132,6 +153,7 @@ public class CounterExportTool {
 			props.load(in);
 			table = loadProperty(props, "table");
 			appid = loadProperty(props, "appid");
+			query_url = loadOptionalProperty(props, "query_url");
 			counterid = loadProperty(props,"counterid");
 			publisherid = loadOptionalProperty(props, "publisherid");
 			channelid = loadOptionalProperty(props, "channelid");
@@ -141,19 +163,16 @@ public class CounterExportTool {
 			startTime = new Date(start);
 			String end =  loadProperty(props, "end");
 			endTime = new Date(end);
-			outputFile = loadProperty(props, "outputfile");
+			outputDir = loadProperty(props, "outputDir");
 			exclude_publisher = loadOptionalProperty(props,"exclude_publisher");
 			all_counters = loadOptionalProperty(props,"all_counters");
 			all_publishers = loadOptionalProperty(props,"all_publishers");
+			line_per_file = Integer.parseInt(loadOptionalProperty(props,"line_per_file"));
 
-			File file = new File (outputFile);
+			File file = new File (outputDir);
 			if (!file.exists())
 			{
-				try {
-					file.createNewFile();
-				} catch (IOException e) {
-					exit ("FAILED: Cannot find or create output file at "+ outputFile);
-				}
+				file.mkdir();
 			}
 		System.out.println("Finished loading property file");
 		System.out.println();
