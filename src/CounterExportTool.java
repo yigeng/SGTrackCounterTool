@@ -40,10 +40,9 @@ public class CounterExportTool {
 	private static String platformid;
 	private static Date startTime;
 	private static Date endTime;
-	private static String outputDir;
+	private static String outputFile;
 	private static String exclude_publisher;
 	private static String server_url = "114.215.105.66";
-	private static int line_per_file = -1;
 	private static String all_counters;
 	private static String all_publishers;
 
@@ -65,13 +64,31 @@ public class CounterExportTool {
 		else
 			exclude_publisher = "0";
 		
-		String url = "http://"+server_url+":8080/sgpromo_ssh/searchbypublisher?tablename="+table+"&appid="+appid+"&counterid="+counterid+"&publisherid="+publisherid+"&starttime="+startStr+"&endtime="+endStr+"&exclude="+exclude_publisher;
+		boolean isAllCounters = false;
+		boolean isAllPublishers = false;
 		
+		String url = "http://"+server_url+":8080/sgpromo_ssh/searchbypublisher?tablename="+table+"&appid="+appid+"&counterid="+counterid+"&publisherid="+publisherid+"&starttime="+startStr+"&endtime="+endStr+"&exclude="+exclude_publisher;
 		if (all_counters!=null && all_counters.equalsIgnoreCase("true"))
-			url = "http://"+server_url+":8080/sgpromo_ssh/searchallcountersbypublisher?tablename="+table+"&appid="+appid+"&publisherid="+publisherid+"&starttime="+startStr+"&endtime="+endStr+"&exclude="+exclude_publisher;
+			isAllCounters = true;
 		
 		if (all_publishers!=null && all_publishers.equals("true"))
+			isAllPublishers = true;
+		
+		System.out.println ("all counters: "+ isAllCounters);
+		System.out.println ("all publishers: "+isAllPublishers);
+		
+		if (isAllCounters && isAllPublishers)
+			url = "http://"+server_url+":8080/sgpromo_ssh/searchallcounters?tablename="+table+"&appid="+appid+"&publisherid=-9999"+"&starttime="+startStr+"&endtime="+endStr+"&exclude=1";
+		
+		else if (isAllCounters && !isAllPublishers)
+			url = "http://"+server_url+":8080/sgpromo_ssh/searchallcounters?tablename="+table+"&appid="+appid+"&publisherid="+publisherid+"&starttime="+startStr+"&endtime="+endStr+"&exclude="+exclude_publisher;
+		
+		else if (!isAllCounters && isAllPublishers)
 			url = "http://"+server_url+":8080/sgpromo_ssh/searchitems?tablename="+table+"&appid="+appid+"&counterid="+counterid+"&starttime="+startStr+"&endtime="+endStr;
+		
+		else // not isAllCounters and not isAllPublishers
+			url = "http://"+server_url+":8080/sgpromo_ssh/searchbypublisher?tablename="+table+"&appid="+appid+"&counterid="+counterid+"&publisherid="+publisherid+"&starttime="+startStr+"&endtime="+endStr+"&exclude="+exclude_publisher;
+		
 		
 		  System.out.println("Calling "+ url);
 		  System.out.println("Fetching data, please wait...");
@@ -87,13 +104,11 @@ public class CounterExportTool {
   			
 			JSONObject record = (JSONObject)parser.parse(html);
 			JSONArray payload = (JSONArray)record.get("data");
-			int file_id = 1;
-			int line_no = 0;
-			BufferedWriter out= new BufferedWriter(new FileWriter(outputDir+"/result"+""+file_id+".csv"));
+			
+			BufferedWriter out= new BufferedWriter(new FileWriter(outputFile));
 			Iterator<?> keys = payload.iterator();
 			JSONObject item = null;
 	        while( keys.hasNext() ){
-	        	line_no ++;
 	        	try{
 		            item = (JSONObject)keys.next();
 		            String metadata_str = (String)item.get("metadata");
@@ -107,7 +122,7 @@ public class CounterExportTool {
 		            TimeZone.setDefault(TimeZone.getTimeZone("GMT+8"));
 		            java.util.Date time=new java.util.Date(timestamp*1000);
 		            String stamp = sdf.format(time);
-		            String line = counterid+","+userid+","+ stamp +",";
+		            String line = "counter,"+counterid+",userid,"+userid+",time,"+ stamp;
 		            Iterator<?> parts = metadata.keySet().iterator();
 		            // 确保metadata keys按顺序输出
 		            ArrayList<String> metadata_keys = new ArrayList<String>();	            
@@ -120,14 +135,6 @@ public class CounterExportTool {
 		            for (String key : metadata_keys)
 		            	line += key+","+(String)metadata.get(key)+",";
 		            
-		            if (line_per_file >0 && line_no>line_per_file)
-		            {
-		            	out.flush();
-		            	line_no = 0;
-		            	file_id++;
-		            	out =  new BufferedWriter(new FileWriter(outputDir+"/result"+""+file_id+".csv"));
-		            }
-		            //System.out.println(line);
 					out.write(line+"\n");
 	        	}catch (Exception e)
 	        	{
@@ -163,17 +170,11 @@ public class CounterExportTool {
 			startTime = new Date(start);
 			String end =  loadProperty(props, "end");
 			endTime = new Date(end);
-			outputDir = loadProperty(props, "outputDir");
+			outputFile = loadProperty(props, "outputfile");
 			exclude_publisher = loadOptionalProperty(props,"exclude_publisher");
 			all_counters = loadOptionalProperty(props,"all_counters");
 			all_publishers = loadOptionalProperty(props,"all_publishers");
-			line_per_file = Integer.parseInt(loadOptionalProperty(props,"line_per_file"));
 
-			File file = new File (outputDir);
-			if (!file.exists())
-			{
-				file.mkdir();
-			}
 		System.out.println("Finished loading property file");
 		System.out.println();
 		System.out.println("Looking for appid:"+appid+", counterid:"+counterid);
