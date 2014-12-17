@@ -74,8 +74,10 @@ public class CounterExportTool {
 		if (all_publishers!=null && all_publishers.equals("true"))
 			isAllPublishers = true;
 		
-		System.out.println ("all counters: "+ isAllCounters);
-		System.out.println ("all publishers: "+isAllPublishers);
+		System.out.println ("All counters: "+ isAllCounters);
+		System.out.println ("All publishers: "+isAllPublishers);
+		System.out.println();
+		
 		
 		if (isAllCounters && isAllPublishers)
 			url = "http://"+server_url+":8080/sgpromo_ssh/searchallcounters?tablename="+table+"&appid="+appid+"&publisherid=-9999"+"&starttime="+startStr+"&endtime="+endStr+"&exclude=1";
@@ -177,8 +179,6 @@ public class CounterExportTool {
 
 		System.out.println("Finished loading property file");
 		System.out.println();
-		System.out.println("Looking for appid:"+appid+", counterid:"+counterid);
-		System.out.println("Exclude publisher id is "+ exclude_publisher +", publisher id is "+publisherid);
 		System.out.println("Time period is from "+startTime+" to "+endTime);
 		System.out.println();
 		} catch (FileNotFoundException e) {
