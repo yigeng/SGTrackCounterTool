@@ -45,6 +45,7 @@ public class CounterExportTool {
 	private static String server_url = "114.215.105.66";
 	private static String all_counters;
 	private static String all_publishers;
+	private static String metadata_keyword;
 
 	public static void main(String args[]) throws ClientProtocolException, IOException {
 		init();
@@ -114,6 +115,9 @@ public class CounterExportTool {
 	        	try{
 		            item = (JSONObject)keys.next();
 		            String metadata_str = (String)item.get("metadata");
+		            // filter out records that dont have the expecting metadata keywords
+		            if (metadata_str!=null && metadata_keyword!=null&&metadata_keyword.length()>0&&!metadata_str.contains(metadata_keyword))
+		            	continue;
 		            JSONObject metadata = (JSONObject)parser.parse(metadata_str);
 		            String userid = (String)item.get("userid");
 		            if (userid==null || userid.equals("0"))
@@ -124,7 +128,7 @@ public class CounterExportTool {
 		            TimeZone.setDefault(TimeZone.getTimeZone("GMT+8"));
 		            java.util.Date time=new java.util.Date(timestamp*1000);
 		            String stamp = sdf.format(time);
-		            String line = "counter,"+counterid+",userid,"+userid+",time,"+ stamp;
+		            String line = "counter,"+counterid+",userid,"+userid+",time,"+ stamp+",";
 		            Iterator<?> parts = metadata.keySet().iterator();
 		            // 确保metadata keys按顺序输出
 		            ArrayList<String> metadata_keys = new ArrayList<String>();	            
@@ -136,7 +140,7 @@ public class CounterExportTool {
 		            Collections.sort(metadata_keys);
 		            for (String key : metadata_keys)
 		            	line += key+","+(String)metadata.get(key)+",";
-		            
+		            System.out.println(line);
 					out.write(line+"\n");
 	        	}catch (Exception e)
 	        	{
@@ -176,6 +180,7 @@ public class CounterExportTool {
 			exclude_publisher = loadOptionalProperty(props,"exclude_publisher");
 			all_counters = loadOptionalProperty(props,"all_counters");
 			all_publishers = loadOptionalProperty(props,"all_publishers");
+			metadata_keyword = loadOptionalProperty(props,"metadata_keyword");
 
 		System.out.println("Finished loading property file");
 		System.out.println();
